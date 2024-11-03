@@ -30,7 +30,7 @@ def preprocessing_queries(models: list) -> list:
     # Estraggo i modelli che ho già processato
     models_with_files = [key for key, value in data.items() if len(dict(value)) != 0]
 
-    # Li tolgo da quelli che devo minare
+    # Li tolgo da quelli che devo ancora minare
     models = [item for item in models if item not in set(models_with_files)]
 
     return models
@@ -71,11 +71,12 @@ def search_code_files(token: str, queries: list, dict_model_tags: dict, dict_mod
             files_founded = github_instance.search_code(query=query)
             request_count += 1  # Incrementa il contatore delle richieste
 
-            if files_founded.totalCount <= 0:
-                continue
-
             model = query.replace(" language:Python", "")
             dict_repository_files = dict_model_repositories[model] # dizionario interno del principale
+
+            if files_founded.totalCount <= 0:
+                dict_repository_files["0 repositories founded"] = dict()
+                continue
 
             for file in files_founded[:2000]:
                 try:
@@ -127,7 +128,7 @@ def search_code_files(token: str, queries: list, dict_model_tags: dict, dict_mod
                         #"file_content": file.content
                     })
 
-                    print(f"{token} attesa di mezzo secondo prima della prossima query")
+                    #print(f"{token} attesa di mezzo secondo prima della prossima query")
                     time.sleep(0.5)
 
                     current_time = datetime.now()
@@ -184,7 +185,9 @@ df = load_and_prepare_df(dataset_path='./hf_data/ranked_by_downloads_june.csv', 
 # creazione lista contenente i nomi dei modelli espressi chiaramente
 models_name = df['model_name'].str.replace('models/', '', regex=False).tolist()
 
-models_name = preprocessing_queries(models_name[:533])
+models_name = preprocessing_queries(models_name[:534]) # fare da 534:in poi
+
+print(len(models_name))
 
 # mapping modello-tag specifico (servirà per cercare nel readme)
 dict_model_tags = dict(zip(models_name, df['tags']))
@@ -211,9 +214,12 @@ tokens_list = ["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",
                ] 
 
 # MULTI TOKEN
-#search_with_multiple_tokens(tokens=tokens_list, queries=github_queries, dict_model_tags=dict_model_tags, dict_model_repositories=dict_model_repositories)
+# search_with_multiple_tokens(tokens=tokens_list, queries=github_queries, dict_model_tags=dict_model_tags, dict_model_repositories=dict_model_repositories)
+
+#print("SALVATAGGIO FINALE")
+#add_json_data(json_file='code_files.json', new_data=dict_model_repositories)
 
 # SINGLE TOKEN
 #search_code_files(token=tokens_list[0], queries=github_queries, dict_model_tags=dict_model_tags, dict_model_repositories=dict_model_repositories)
 
-#print_rate_limit(tokens=tokens_list)
+print_rate_limit(tokens=tokens_list)
