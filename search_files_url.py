@@ -21,7 +21,7 @@ def load_and_prepare_df(dataset_path: str, separator: str) -> pd.DataFrame:
 
 # funzione per togliere le query che sono già state elaborate
 def preprocessing_queries(models: list) -> list:
-    with open('code_files.json', 'r') as file:
+    with open('search_code_files.json', 'r') as file:
         data = json.load(file)
 
     # Estraggo i modelli che ho già processato
@@ -73,7 +73,7 @@ def search_code_files(token: str, queries: list, dict_model_tags: dict, dict_mod
                 dict_repository_files["0 repositories founded"] = dict()
                 continue # si continua con la prossima query
             
-            # scorro i primi 2000 file (la paginazione è aumomaticamente gestita)
+            # provo scorro i primi 2000 file (la paginazione è aumomaticamente gestita) ma non supera i 1000 totali
             for file in files_founded[:2000]:
                 try:
                     # prendo il nome, è la chiave del dizionario interno
@@ -123,7 +123,6 @@ def search_code_files(token: str, queries: list, dict_model_tags: dict, dict_mod
                     dict_repository_files[repository_name]["files"].append({
                         "file_name": file.name,
                         "file_url": file.html_url,
-                        #"file_content": file.content
                     })
 
                     print(f"{token} attesa di mezzo secondo prima della prossima query")
@@ -133,25 +132,25 @@ def search_code_files(token: str, queries: list, dict_model_tags: dict, dict_mod
                     # vedo se è il momennto di salvare
                     if current_time - last_save_time >= timedelta(minutes=30):
                         print("Salvataggio dei dati dopo 30 minuti.")
-                        add_json_data(json_file='code_files.json', new_data=dict_model_repositories)
+                        add_json_data(json_file='search_code_files.json', new_data=dict_model_repositories)
                         last_save_time = current_time  # Aggiorna il timestamp dell'ultimo salvataggio
 
                 except GithubException as e:
                     # se ho incontrato 
                     if e.status == 403:
                         print("LIMITE DI 5000 - SALVO")
-                        add_json_data(json_file='code_files.json', new_data=dict_model_repositories)
+                        add_json_data(json_file='search_code_files.json', new_data=dict_model_repositories)
                         print("ATTESA DI 1H")
                         time.sleep(3605)  # ora
                     continue
                 
 
         except Exception as e:
-            continue 
+            print(f"Errore: {e}")
 
 
 # Funzione per avviare ricerche parallele con più token
-def search_with_multiple_tokens(tokens: list, queries: list, dict_model_tags: dict, dict_model_repositories: dict) -> None:
+def search_with_multiple_tokens(tokens: list, queries: list, dict_model_tags: dict, dict_model_repositories: dict, last_save_time: datetime) -> None:
     queries_per_token = len(queries) // len(tokens)
 
     with ThreadPoolExecutor(max_workers=len(tokens)) as executor:
@@ -159,7 +158,7 @@ def search_with_multiple_tokens(tokens: list, queries: list, dict_model_tags: di
         for i, token in enumerate(tokens):
             # Distribuisci le query a ogni token
             token_queries = queries[i * queries_per_token: (i + 1) * queries_per_token]
-            futures.append(executor.submit(search_code_files, token, token_queries, dict_model_tags, dict_model_repositories))
+            futures.append(executor.submit(search_code_files, token, token_queries, dict_model_tags, dict_model_repositories, last_save_time))
 
         # Attende che tutti i thread terminino
         for future in futures:
@@ -173,11 +172,11 @@ def add_json_data(json_file: str, new_data: dict) -> None:
     except FileNotFoundError:
         # dizionario vuoto all'inizio
         current_data = {}
-
-    new_data = current_data | new_data
+    
+    merged_dict = current_data | new_data
 
     with open(json_file, 'w') as file:
-        json.dump(new_data, file, indent=4)
+        json.dump(merged_dict, file, indent=4)
 
 
 df = load_and_prepare_df(dataset_path='./hf_data/ranked_by_downloads_june.csv', separator=',')
@@ -207,7 +206,7 @@ TOKENS_LIST = ["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",
                "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"
                ] 
 
-# MULTI TOKEN
+#MULTI TOKEN
 search_with_multiple_tokens(tokens=TOKENS_LIST, 
                             queries=models_name, 
                             dict_model_tags=dict_model_tags, 
@@ -217,5 +216,5 @@ search_with_multiple_tokens(tokens=TOKENS_LIST,
 # SINGLE TOKEN
 # search_code_files(token=TOKENS_LIST[0], queries=models_name, dict_model_tags=dict_model_tags, dict_model_repositories=dict_model_repositories)
 
-# print("SALVATAGGIO FINALE")
-# add_json_data(json_file='code_files.json', new_data=dict_model_repositories)
+print("SALVATAGGIO FINALE")
+add_json_data(json_file='search_code_files.json', new_data=dict_model_repositories)

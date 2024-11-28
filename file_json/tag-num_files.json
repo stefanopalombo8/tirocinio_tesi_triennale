@@ -1,0 +1,15 @@
+{
+    "text-generation": 181153,
+    "text-to-image": 30918,
+    "image-classification": 37741,
+    "text-classification": 29977,
+    "text2text-generation": 32743,
+    "fill-mask": 68877,
+    "sentence-similarity": 22473,
+    "question-answering": 9784,
+    "summarization": 8057,
+    "zero-shot-image-classification": 14132,
+    "image-to-text": 13833,
+    "object-detection": 7023,
+    "image-segmentation": 12002
+}

@@ -37,7 +37,7 @@ print(f"dim dataset filtrato per tag {len(filtered_df)}")
 df_models_name = filtered_df['model_name'].str.replace('models/', '', regex=False).tolist()
 
 # prendo il risultato del mining
-with open('code_files.json', 'r') as file:
+with open('search_code_files.json', 'r') as file:
     dict_model_repos = json.load(file)
 
 # dizionario finale senza 0 risultati e filtrato per tag scelti
@@ -48,24 +48,17 @@ dict_model_repos_filtered = {key: value for key, value in dict_model_repos.items
 print(f"dim nuovo dizionario {len(dict_model_repos_filtered)}")
 
 # salvo il nuovo dizionario
-# with open('code_files_final.json', 'w') as file:
-#     json.dump(dict_model_repos_filtered, file, indent=4)
+with open('search_code_files_final.json', 'w') as file:
+    json.dump(dict_model_repos_filtered, file, indent=4)
 
 # tag - modelli
 dict_tag_models = {tag : list() for tag in tags}
 
-# popolo il dizionario
 for model in dict_model_repos_filtered.keys():
     model_tag = filtered_df.loc[filtered_df['model_name'] == "models/"+model]['tags'].values[0]
 
     if model_tag in tags:
         dict_tag_models[model_tag].append(model)
-
-print(f"modelli totali {sum(len(value) for value in dict_tag_models.values())}")
-
-# salvo
-# with open("tag_models.json", "w") as file:
-#     json.dump(dict_tag_models, file, indent=4)
 
 # tag - numero di file
 dict_tag_num_of_files = {
@@ -78,6 +71,16 @@ dict_tag_num_of_files = {
 print(f"numero totale dei file {sum(dict_tag_num_of_files.values())}")
 
 # salvo
-# with open("tag_files.json", "w") as file:
-#     json.dump(dict_tag_num_of_files, file, indent=4)
+with open("tag-num_files.json", "w") as file:
+    json.dump(dict_tag_num_of_files, file, indent=4)
 
+# modello - tag che mi servirà per inserire nel db mongodb
+dict_model_tag = {}
+
+for tag, models in dict_tag_models.items():
+    for model in models:
+        dict_model_tag[model] = tag
+
+# salvo
+with open("model-tag.json", "w") as file:
+    json.dump(dict_model_tag, file, indent=4)

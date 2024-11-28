@@ -3,7 +3,7 @@ import re
 import time
 import pytz
 from datetime import datetime
-from github import Github, Auth, GithubException
+from github import Github, Auth
 from pymongo import MongoClient
 from concurrent.futures import ThreadPoolExecutor
 
@@ -32,7 +32,9 @@ def get_file_content_from_url(g, file_url:str):
 
             # Calcola la differenza
             diff = reset_time_utc - now_utc
-            seconds_to_sleep = diff.total_seconds() + 120 # ulteriore attesa di 2 minuti per sicurezza
+            seconds_to_sleep = diff.total_seconds() + 180 # ulteriore attesa di 3 minuti per sicurezza
+
+            print(f"Attesa di {seconds_to_sleep}")
 
             time.sleep(seconds_to_sleep) 
 
@@ -126,15 +128,17 @@ db = client["github_files"]
 models_collection = db["models"]
 files_collection = db["files"]
 
-with open('code_files_final.json', 'r') as file:
-    dict_model_repos = json.load(file)
+with open('search_code_files_final.json', 'r') as f:
+    dict_model_repos = json.load(f)
 
-with open('model_tag.json', 'r') as file:
+with open('model-tag.json', 'r') as file:
     dict_model_tag = json.load(file)
 
-model_to_process = list(dict_model_repos.keys())[:2]
+models_to_process = list(dict_model_repos.keys())
 
-search_with_multiple_tokens(tokens=TOKENS_LIST[:2], 
-                            queries=model_to_process, 
+#print(len(models_to_process))
+
+search_with_multiple_tokens(tokens=TOKENS_LIST, 
+                            queries=models_to_process, 
                             dict_model_repos=dict_model_repos,
                             dict_model_tag=dict_model_tag)
