@@ -2,14 +2,8 @@ import os
 import json
 from pymongo import MongoClient
 from concurrent.futures import ThreadPoolExecutor
-
-MONGODB_URI = "mongodb://localhost:27017/"
-
-client = MongoClient(MONGODB_URI)
-
-db = client["github_files"]
-models_collection = db["models"]
-files_collection = db["files"]
+from search_files_url import TAGS
+from search_files_content import create_or_load_db
 
 # Da fare solo la prima volta
 def create_index(collection):
@@ -20,7 +14,7 @@ def create_index(collection):
     print(collection.index_information())
 
 # Salvare i file per ogni modello
-def process_model(model):
+def process_model(model, files_collection):
     model_id = model["_id"]
     model_name = model["model_name"]
 
@@ -54,43 +48,19 @@ def process_model(model):
                 f.write(content)
 
 # Funzione per avviare in parallelo il salvataggio
-def create_folders_parallel():
+def create_folders_parallel(models_collection):
     all_models = list(models_collection.find())
     with ThreadPoolExecutor(max_workers=4) as executor: # 4 in base ai processori logici del mio pc
         executor.map(process_model, all_models)
 
 
-# Conta tutti i documenti nella collezione files dove content è None
-def count_files_with_no_content():
-    try:
-        count = files_collection.count_documents({"content": None})
-        print(f"Numero di file con content=None: {count}")
-        return count
-    except Exception as e:
-        print(f"Errore durante la query: {e}")
-        return 0
-
 # Contare per ogni tag il numero di file (per descrizione online latex)
-def count_files_by_tag(tags):
+def count_files_by_tag(models_collection, files_collection):
 
-    tags = ["text-generation", 
-        "text-to-image", 
-        "image-classification", 
-        "text-classification", 
-        "text2text-generation",
-        "fill-mask",
-        "sentence-similarity",
-        "question-answering", 
-        "summarization", 
-        "zero-shot-image-classification", 
-        "image-to-text", 
-        "object-detection", 
-        "image-segmentation"]
-    
-    tag_file_count = {tag: 0 for tag in tags}
+    tag_file_count = {tag: 0 for tag in TAGS}
 
     try:
-        for tag in tags:
+        for tag in TAGS:
             # Trova tutti i modelli con il tag corrente
             models_with_tag = models_collection.find({"tag": tag})
 
@@ -101,12 +71,17 @@ def count_files_by_tag(tags):
                 count = files_collection.count_documents({"model_id": model_id, "content": {"$ne": None}})
                 tag_file_count[tag] += count
 
-        with open("tag-num_files2.json", "w") as file:
+        with open("file_json/tag-num_files_final.json", "w") as file:
             json.dump(tag_file_count, file, indent=4)
 
     except Exception as e:
         print(f"Errore durante il calcolo dei file per tag: {e}")
 
-#create_folders_parallel()
+if __name__ == "__main__":
+    model_collection, files_collection = create_or_load_db()
 
-#count_files_by_tag()
+    #create_index(collection=files_collection)
+
+    #create_folders_parallel()
+
+    count_files_by_tag(models_collection=model_collection, files_collection=files_collection)
